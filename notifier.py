@@ -20,6 +20,8 @@ from linebot.v3.messaging import (
 ACCESS_TOKEN = os.environ["LINE_CHANNEL_ACCESS_TOKEN"]
 USER_ID = os.environ["LINE_USER_ID"]
 
+CACHE_FILE = "events_cache.json"
+
 # スクレイピングURL
 url = "https://www.av-event.jp/search/?begin_date=20260510&pref_id=23"
 
@@ -80,38 +82,91 @@ for item in soup.select(".c-event-item"):
         "url": link
     })
 
-# JSON文字列化
-json_text = json.dumps(
-    events,
-    ensure_ascii=False,
-    indent=2
-)
+# =========================
+# 前回データ読み込み
+# =========================
 
-# LINE送信用に分割
-chunks = [
-    json_text[i:i + 4000]
-    for i in range(0, len(json_text), 4000)
+old_events = []
+
+if os.path.exists(CACHE_FILE):
+
+    with open(CACHE_FILE, "r", encoding="utf-8") as f:
+        old_events = json.load(f)
+
+# 比較しやすくする
+old_urls = {
+    event["url"]
+    for event in old_events
+}
+
+# 新規イベント抽出
+new_events = [
+    event
+    for event in events
+    if event["url"] not in old_urls
 ]
 
-messages = [
-    TextMessage(text=chunk)
-    for chunk in chunks
-]
+# =========================
+# LINE通知
+# =========================
 
-# LINE送信
-configuration = Configuration(
-    access_token=ACCESS_TOKEN
-)
+if new_events:
 
-with ApiClient(configuration) as api_client:
+    lines = []
 
-    line_bot_api = MessagingApi(api_client)
+    for event in new_events:
 
-    line_bot_api.push_message(
-        PushMessageRequest(
-            to=USER_ID,
-            messages=messages[:5]  # LINE最大5メッセージ
+        lines.append(
+            f"""【新着イベント】
+タイトル: {event['title']}
+開催日: {event['date']}
+場所: {event['location']}
+URL:
+{event['url']}
+"""
         )
+
+    text = "\n-------------------\n".join(lines)
+
+    chunks = [
+        text[i:i + 4000]
+        for i in range(0, len(text), 4000)
+    ]
+
+    messages = [
+        TextMessage(text=chunk)
+        for chunk in chunks
+    ]
+
+    configuration = Configuration(
+        access_token=ACCESS_TOKEN
     )
 
-print("送信完了")
+    with ApiClient(configuration) as api_client:
+
+        line_bot_api = MessagingApi(api_client)
+
+        line_bot_api.push_message(
+            PushMessageRequest(
+                to=USER_ID,
+                messages=messages[:5]
+            )
+        )
+
+    print("新規イベント通知完了")
+
+else:
+    print("新規イベントなし")
+
+# =========================
+# キャッシュ保存
+# =========================
+
+with open(CACHE_FILE, "w", encoding="utf-8") as f:
+
+    json.dump(
+        events,
+        f,
+        ensure_ascii=False,
+        indent=2
+    )
