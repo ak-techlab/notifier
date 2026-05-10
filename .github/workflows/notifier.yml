@@ -31,12 +31,12 @@ jobs:
           LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
         run: python notifier.py
 
-      - name: Commit updated events.json
+      - name: Commit updated events_cache.json
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
 
-          git add events.json
+          git add as_cache.json
 
           git diff --cached --quiet || git commit -m "update events"
 
