@@ -1,5 +1,8 @@
 name: AV Event Notifier
 
+permissions:
+  contents: write
+
 on:
   schedule:
     - cron: '*/1 * * * *'
