@@ -87,6 +87,17 @@ json_text = json.dumps(
     indent=2
 )
 
+# LINE送信用に分割
+chunks = [
+    json_text[i:i + 4000]
+    for i in range(0, len(json_text), 4000)
+]
+
+messages = [
+    TextMessage(text=chunk)
+    for chunk in chunks
+]
+
 # LINE送信
 configuration = Configuration(
     access_token=ACCESS_TOKEN
@@ -99,11 +110,7 @@ with ApiClient(configuration) as api_client:
     line_bot_api.push_message(
         PushMessageRequest(
             to=USER_ID,
-            messages=[
-                TextMessage(
-                    text=json_text[:5000]  # LINE文字数対策
-                )
-            ]
+            messages=messages[:5]  # LINE最大5メッセージ
         )
     )
 
