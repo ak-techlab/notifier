@@ -36,7 +36,6 @@ html = requests.get(url, headers=headers).text
 soup = BeautifulSoup(html, "html.parser")
 
 events = []
-print("aaa")
 
 # イベント取得
 for item in soup.select(".c-event-item"):
